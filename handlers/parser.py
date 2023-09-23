@@ -70,12 +70,20 @@ class ParserAkniga(Parser):
         name.pop(0)
 
         for i in range(len(item)):
-            data.append(
-                {
-                    "name": name[i].text,
-                    "offset": int(item[i]['data-pos'])
-                }
-            )
+            try:
+                data.append(
+                    {
+                        "name": name[i].text,
+                        "offset": (int(item[i]['data-pos']), int(item[i+1]['data-pos']))
+                    }
+                )
+            except IndexError:
+                data.append(
+                    {
+                        "name": name[i].text,
+                        "offset": (int(item[i]['data-pos']), -1)
+                    }
+                )
 
         return data
 
