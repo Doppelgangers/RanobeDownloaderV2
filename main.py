@@ -2,7 +2,7 @@ import pathlib
 import time
 import logging
 
-from handlers import SiteChecker, ParserM3U8, CryptoDownloader, ParserAkniga
+from handlers import SiteChecker, ParserM3U8, CryptoDownloader, ParserAkniga, AudioSplitter
 
 
 def main():
@@ -26,14 +26,18 @@ def main():
     m3u8 = ParserM3U8(m3u8)
     page_akniga = ParserAkniga(html_code=html)
     path_download = pathlib.Path('temp', page_akniga.title)
-    print(page_akniga.audio_map)
 
     downloader = CryptoDownloader(key=m3u8.key, iv=m3u8.iv, path=path_download)
     logging.info("Начало загрузки исходников")
-    # t = time.time()
-    # # downloader.async_download(m3u8.get_list_ts_link())
-    # # logging.info(f"Исходники скачались за {time.time() - t} секунды ")
-    # # print(f"Исходники лежат по пути: ", pathlib.Path.cwd().joinpath(path_download))
+    t = time.time()
+    downloader.async_download(m3u8.get_list_ts_link())
+    logging.info(f"Исходники скачались за {time.time() - t} секунды ")
+
+    print(f"Исходники лежат по пути: ", pathlib.Path.cwd().joinpath(path_download))
+
+    # audio = AudioSplitter(map_playlist=page_akniga.audio_map, path=path_download)
+    # audio.create_merge_file()
+    # audio.merge_files()
 
     print(r"""
      _____   _   _  ______ 
