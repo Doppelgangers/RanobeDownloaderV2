@@ -1,0 +1,8 @@
+при загрузки файлов если в название есть недопустиме символы влзникает ошибка
+  File "D:\dev\RanobeDownloaderV2\handlers\cryptodownloader.py", line 13, in __init__
+OSError: [WinError 123] Синтаксическая ошибка в имени файла, имени папки или метке тома: 'D:\\dev\\RanobeDownloaderV2\\temp\\А это точно перерождение? Том 1'
+
+ошибка при наличия GET запроса в пути файла 
+  File "D:\dev\RanobeDownloaderV2\handlers\cryptodownloader.py", line 32, in _async_download_file
+    async with aiofiles.open(pathlib.Path(self.path, filename), "wb") as file:
+OSError: [Errno 22] Invalid argument: 'D:\\dev\\RanobeDownloaderV2\\temp\\Дополнительные истории\\seq13.ts?v=3'

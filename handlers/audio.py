@@ -33,8 +33,7 @@ class Ffmpeg:
         with open(self.path_merge_file, 'w', encoding="utf-8") as file:
             file.writelines([f"""file '{path}'\n""" for path in file_paths])
 
-    def _make_merge_in_files(self, filename: str = 'output.ts'):
-        output_path = self.path.joinpath(filename)
+    def _make_merge_in_files(self, output_path: str | Path):
         command = f"""{self._ffmpeg} -f concat -safe 0 -i "{self.path_merge_file}" -c copy "{output_path}"""
         CommandLine.execute(command)
 
@@ -42,21 +41,19 @@ class Ffmpeg:
         command = f"""del "{self.path_merge_file}" """
         CommandLine.execute(command)
 
-    def merge(self, paths_audio_files: list[str], output: str = 'output.mp3', use_base_path: bool = True):
+    def merge(self, paths_audio_files: list[str], output: str | Path):
         self._create_merge_file(paths_audio_files)
-        path = self.path.joinpath(output) if use_base_path else output
-        self._make_merge_in_files(path)
+        self._make_merge_in_files(output_path=output)
 
-    def convert_TS_to_MP3(self, path_ts, output, del_old_file: bool = False, use_work_path: bool = True,):
+    def convert_TS_to_MP3(self, path_ts, output, del_old_file: bool = False, use_work_path: bool = True):
         path_ts = self.path.joinpath(path_ts) if use_work_path else path_ts
         output = self.path.joinpath(output) if use_work_path else output
         del_command = f"""del "{path_ts}" """
-        command = f"""{self._ffmpeg} -i "{path_ts}" -vn -acodec libmp3lame "{output}" {' && ' + del_command if del_old_file else ''}"""
+        command = f"""{self._ffmpeg} -i "{path_ts}" -c:a libmp3lame "{output}" {' && ' + del_command if del_old_file else ''}"""
         CommandLine.execute(command)
 
     def split_audio(self, input_file, output_file, start_time: int, end_time: int, metadata=None):
         """
-
         :param input_file: путь к входящему файлу
         :param output_file: путь в выходящему файлу
         :param start_time: время начало отреза в секундах
@@ -74,8 +71,25 @@ class Ffmpeg:
         cmd_codec = ['-c', 'copy']
         cmd_output = [output_file]
         command += cmd_input + cmd_start_time + (cmd_end_time if end_time != -1 else []) + cmd_codec + metadata + cmd_output
-        print(command)
         CommandLine.execute(command)
+
+    @staticmethod
+    def create_metadata(title=None, track: int = None, artist=None, album=None, date=None) -> [str]:
+        """
+        :param title: Название произведения
+        :param track: Номер трека
+        :param artist: Исполнтель
+        :param album: Название альюома
+        :param date: Год выпуска аудио файла.
+        :return: metadata для создания аудиофайла
+        """
+        kwarg = locals()
+        meta_command = ["-metadata"]
+        metadata = []
+        for value in kwarg:
+            if kwarg[value] is not None:
+                metadata += meta_command + [f"{value}={kwarg[value]}"]
+        return metadata
 
 
 class AudioSplitter:
@@ -91,14 +105,17 @@ class AudioSplitter:
         self.map_playlist = map_playlist
         self.path = Path(path)
 
+    def del_temp_folder(self):
+        CommandLine.execute(f'RD /s/q "{self.path}" ')
+
     @property
-    def list_seq_ts_files(self) ->  list[str | Path]:
-        ls = [file_path.__str__() for file_path in path_aud.glob('seq*.ts')]
+    def list_seq_ts_files(self) -> list[str | Path]:
+        ls = [file_path.__str__() for file_path in self.path.glob('seq*.ts')]
         return sorted(ls, key=lambda x: int(re.findall(r"seq(\d*).ts", x)[0]))
 
     @property
     def list_seq_mp3_files(self) -> list[str | Path]:
-        ls = [file_path.__str__() for file_path in path_aud.glob('seq*.mp3')]
+        ls = [file_path.__str__() for file_path in self.path.glob('seq*.mp3')]
         return sorted(ls, key=lambda x: int(re.findall(r"seq(\d*).mp3", x)[0]))
 
     def del_templates(self):
@@ -114,11 +131,33 @@ class AudioSplitter:
         pool.close()
         pool.join()
 
-    def merge(self):
+    def merge(self, output_path: str | Path = None):
+        output_path = self.path.joinpath('output.mp3') if output_path is None else output_path
         ffmpeg = Ffmpeg(self.path)
-        ffmpeg.merge(self.list_seq_mp3_files)
+        ffmpeg.merge(self.list_seq_mp3_files, output=output_path)
         ffmpeg.del_merge_file()
-        self.del_templates()
+
+    def slice(self, path_save_folder: str | Path, input_file: str | Path = None, album=None, artist=None, ):
+        ffmpeg = Ffmpeg(self.path)
+
+        input_file = Path(self.path.joinpath("output.mp3") if input_file is None else input_file)
+        if not input_file.exists():
+            input_file.mkdir(parents=True)
+
+        path_save_folder = Path(path_save_folder)
+        if not path_save_folder.exists():
+            path_save_folder.mkdir(parents=True)
+
+        for index, task in enumerate(self.map_playlist):
+            name = task["name"]
+            start, end = task["offset"]
+            ffmpeg.split_audio(
+                input_file=input_file,
+                output_file=Path(path_save_folder, f'{name}.mp3'),
+                start_time=start,
+                end_time=end,
+                metadata=ffmpeg.create_metadata(title=name, artist=artist, album=album, track=index+1)
+                              )
 
 
 if __name__ == '__main__':
@@ -128,41 +167,7 @@ if __name__ == '__main__':
 
     pl = AudioSplitter(map_playlist=map_pl, path=path_aud.__str__())
 
-    # logging.debug("Начало конвертации загруженный аудиофайлов")
-    # t = time.time()
-    # pl.convert_ts_to_mp3(ts_paths=pl.list_seq_ts_files)
-
-    # logging.debug(f"Файлы конвертировались за {time.time()-t}")
-
-    logging.debug("Начало объеденения аудиофайлов")
-    t = time.time()
-    # pl.del_templates()
-
-    # command = [
-    #     'ffmpeg',
-    #     f'-i',
-    #     path_aud.joinpath("output.mp3"),
-    #
-    #     '-ss',
-    #     str(datetime.timedelta(seconds=30)),
-    #
-    #     '-to',
-    #     str(datetime.timedelta(seconds=90)),
-    #
-    #     '-c',
-    #     'copy',
-    #
-    #     path_aud.joinpath("2.mp3"),
-    # ]
-    # CommandLine.execute(command)
-    f = Ffmpeg(path_aud)
-    f.split_audio(path_aud.joinpath("output.mp3"), path_aud.joinpath("9.mp3"), 17586, -1 , ['-metadata', 'album=GGG'] )
-
-    # print(path_aud.joinpath("1.mp3)"))
-    # pl.merge()
-    logging.debug(f"Файлы объеденились за {time.time()-t}")
-
-
+    pl.del_temp_folder()
 
 
 
