@@ -5,7 +5,6 @@ from bs4 import BeautifulSoup
 import m3u8
 
 
-
 class Parser:
 
     def __init__(self, html_code):

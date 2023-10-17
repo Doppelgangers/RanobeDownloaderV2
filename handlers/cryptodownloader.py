@@ -15,9 +15,9 @@ class CryptoDownloader:
 
     def async_download(self, urls, ):
         loop = asyncio.get_event_loop()
-        loop.run_until_complete(self._async_download_map(urls))
+        loop.run_until_complete(self._async_create_download_map(urls))
 
-    async def _async_download_map(self, url_list):
+    async def _async_create_download_map(self, url_list):
         async with aiohttp.ClientSession() as session:
             tasks = []
             for url in url_list:
