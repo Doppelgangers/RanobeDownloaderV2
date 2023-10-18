@@ -1,5 +1,6 @@
 from selenium import webdriver
 from selenium.common import exceptions as selenium_exceptions
+from selenium.webdriver.chrome.webdriver import WebDriver
 from selenium.webdriver.common.desired_capabilities import DesiredCapabilities
 
 
@@ -44,7 +45,7 @@ class Browser:
         self._options = options
 
     @property
-    def webdriver(self):
+    def webdriver(self) -> WebDriver:
         try:
             self._driver = webdriver.Chrome(options=self.options)
             return self._driver

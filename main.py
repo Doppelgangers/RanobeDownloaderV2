@@ -3,7 +3,7 @@ import time
 import logging
 
 import settings
-from handlers import SiteChecker, ParserM3U8, CryptoDownloader, ParserAkniga, AudioSplitter
+from handlers import AKnigaWebPage, ParserM3U8, CryptoDownloader, ParserAkniga, AudioSplitter
 
 
 def main():
@@ -18,14 +18,14 @@ def main():
     url = input("Write url: ")
     # url = r'https://akniga.org/nam-hi-sunga-legendarnyy-lunnyy-skulptor-tom-29'
 
-    browser = SiteChecker()
+    page_akniga = AKnigaWebPage(url)
     logging.info("Парсинг сайта")
     t = time.time()
-    m3u8, html = browser.get_akniga_page(url).values()
+
     logging.info(f"Парсинг сайта завершён за {time.time() - t}")
 
-    m3u8 = ParserM3U8(m3u8)
-    page_akniga = ParserAkniga(html_code=html)
+    m3u8 = ParserM3U8(page_akniga.m3u8_link)
+    page_akniga = ParserAkniga(html_code=page_akniga.html_code)
     path_download = pathlib.Path(settings.ROOT_PATH, 'temp', page_akniga.title)
 
     downloader = CryptoDownloader(key=m3u8.key, iv=m3u8.iv, path=path_download)
